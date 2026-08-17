@@ -1,0 +1,11 @@
+[build]
+  publish = "."
+
+# Static hosting can't run server logic, so every path — including
+# "asset" paths like /img/icon.png — has to resolve to index.html.
+# script.js then looks at location.pathname and decides whether to
+# show the dashboard or a chrome-free asset view.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

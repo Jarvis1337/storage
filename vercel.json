@@ -1,0 +1,5 @@
+{
+  "rewrites": [
+    { "source": "/((?!style.css|script.js|StorageBox/.*).*)", "destination": "/index.html" }
+  ]
+}
