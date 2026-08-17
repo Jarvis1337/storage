@@ -4,8 +4,8 @@
    CONFIG — edit these to point at your own repository
    ========================================================= */
 const CONFIG = {
-  githubOwner: "YOUR_USERNAME",
-  githubRepo: "YOUR_REPOSITORY",
+  githubOwner: "Jarvis1337",
+  githubRepo: "storage",
   branch: "main",
   storagePath: "StorageBox" // folder inside the repo that holds your assets
 };
