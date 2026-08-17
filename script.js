@@ -1,13 +1,11 @@
 "use strict";
 
 /* =========================================================
-   CONFIG — edit these to point at your own repository
+   CONFIG
    ========================================================= */
 const CONFIG = {
-  githubOwner: "Jarvis1337",
-  githubRepo: "storage",
-  branch: "main",
-  storagePath: "StorageBox" // folder inside the repo that holds your assets
+  storagePath: "StorageBox",       // folder in the repo that holds your assets
+  manifestUrl: "/storagebox-manifest.json" // written by build.js at deploy time
 };
 
 /* =========================================================
@@ -38,10 +36,11 @@ function escapeHtml(str) {
   return str.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
-/** Raw GitHub content URL for a path relative to storagePath, e.g. "img/icon.png" */
+/** Same-origin URL for a path relative to storagePath, e.g. "img/icon.png".
+ *  The file physically exists on this deploy (Netlify/Vercel cloned it,
+ *  private repos included) so no external API or CORS is involved. */
 function rawUrlFor(relPath) {
-  const { githubOwner, githubRepo, branch, storagePath } = CONFIG;
-  return `https://raw.githubusercontent.com/${githubOwner}/${githubRepo}/${branch}/${storagePath}/${relPath}`;
+  return `${location.origin}/${CONFIG.storagePath}/${relPath}`;
 }
 
 /** "Public" pretty URL that lives on this site's own domain, e.g. https://domain.com/img/icon.png */
@@ -144,54 +143,34 @@ function setStatus(state, text) {
 
 async function loadTree(deepLinkPath) {
   showState("loading");
-  setStatus("loading", "connecting…");
+  setStatus("loading", "reading manifest…");
   try {
-    const { githubOwner, githubRepo, branch, storagePath } = CONFIG;
-    const branchRes = await fetch(`https://api.github.com/repos/${githubOwner}/${githubRepo}/branches/${branch}`);
-    if (!branchRes.ok) throw new Error(`Repository or branch not found (HTTP ${branchRes.status})`);
-    const branchData = await branchRes.json();
-    const treeSha = branchData.commit.sha;
+    // Cache-bust so a fresh deploy's manifest is always picked up.
+    const res = await fetch(`${CONFIG.manifestUrl}?v=${Date.now()}`);
+    if (!res.ok) {
+      throw new Error(
+        res.status === 404
+          ? `${CONFIG.manifestUrl} wasn't found. Make sure the build command "node build.js" ran during deploy.`
+          : `Could not read the manifest (HTTP ${res.status}).`
+      );
+    }
+    TREE = await res.json();
+    if (!TREE || typeof TREE !== "object" || !TREE.folders) {
+      throw new Error(`${CONFIG.manifestUrl} is malformed. Re-run "node build.js" and redeploy.`);
+    }
+    TREE.name = CONFIG.storagePath;
+    TREE.path = "";
 
-    const treeRes = await fetch(`https://api.github.com/repos/${githubOwner}/${githubRepo}/git/trees/${treeSha}?recursive=1`);
-    if (!treeRes.ok) throw new Error(`Could not read repository tree (HTTP ${treeRes.status})`);
-    const treeData = await treeRes.json();
-
-    TREE = buildTree(treeData.tree, storagePath);
-    setStatus("ok", `${githubOwner}/${githubRepo}@${branch}`);
+    setStatus("ok", `${CONFIG.storagePath}/ · ${countAll(TREE)} file${countAll(TREE) === 1 ? "" : "s"}`);
     renderSidebar();
 
     const startPath = deepLinkPath && folderExists(deepLinkPath) ? deepLinkPath : "";
     navigateTo(startPath);
   } catch (err) {
     console.error(err);
-    setStatus("err", "connection failed");
+    setStatus("err", "manifest failed");
     showState("error", err.message);
   }
-}
-
-function buildTree(entries, storagePath) {
-  const root = { name: storagePath, path: "", folders: {}, files: [] };
-  const prefix = storagePath.replace(/\/+$/, "") + "/";
-
-  for (const entry of entries) {
-    if (!entry.path.startsWith(prefix)) continue;
-    const relPath = entry.path.slice(prefix.length);
-    if (!relPath) continue;
-    const segments = relPath.split("/");
-    let node = root;
-    for (let i = 0; i < segments.length - 1; i++) {
-      const seg = segments[i];
-      if (!node.folders[seg]) {
-        node.folders[seg] = { name: seg, path: node.path ? `${node.path}/${seg}` : seg, folders: {}, files: [] };
-      }
-      node = node.folders[seg];
-    }
-    const leaf = segments[segments.length - 1];
-    if (entry.type === "blob") {
-      node.files.push({ name: leaf, path: relPath, size: entry.size });
-    }
-  }
-  return root;
 }
 
 function folderExists(path) {
