@@ -1,0 +1,9 @@
+{
+  "name": "storagebox-dashboard",
+  "private": true,
+  "version": "1.0.0",
+  "description": "GitHub-backed asset dashboard. package.json exists only so Vercel/Netlify auto-detect a Node build step and reliably run build.js on every deploy.",
+  "scripts": {
+    "build": "node build.js"
+  }
+}

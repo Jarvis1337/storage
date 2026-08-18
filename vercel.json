@@ -1,6 +1,7 @@
 {
   "buildCommand": "node build.js",
   "outputDirectory": ".",
+  "framework": null,
   "rewrites": [
     { "source": "/((?!style.css|script.js|storagebox-manifest.json|StorageBox/.*).*)", "destination": "/index.html" }
   ]

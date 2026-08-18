@@ -46,6 +46,14 @@ Nothing needs to be listed by hand anywhere — `build.js` discovers the structu
 
 Both platforms provide a Node.js environment during the build step by default — that's exactly what `build.js` needs, and it's a build-time tool, not a runtime server, so the "static site only" requirement still holds for the deployed app itself.
 
+### If the dashboard shows folders/files with wrong counts or no live previews
+
+This almost always means `storagebox-manifest.json` was never generated (Vercel's dashboard project settings can silently override `vercel.json`'s build command if the project was created before you added it). `package.json` is included specifically to make Vercel/Netlify auto-detect a Node build step and run `node build.js` regardless of dashboard settings — but to confirm it's actually working:
+
+1. Open your deploy's build logs and look for the line `[build.js] Wrote storagebox-manifest.json from "StorageBox/".` If it's missing, the build command never ran.
+2. Visit `https://yourdomain.com/storagebox-manifest.json` directly in the browser. It should show JSON starting with `{"folders":...}`. If it shows your `index.html` page instead, the rewrite rule is swallowing the manifest request — double check the filename matches exactly (case-sensitive) in `vercel.json` / `netlify.toml`.
+3. In Vercel: **Project Settings → Build & Development Settings**, make sure "Override" is on for Build Command with the value `node build.js`, and Output Directory is `.` (or blank).
+
 ## 4. How URLs work
 
 - **Dashboard:** `https://yourdomain.com/`
